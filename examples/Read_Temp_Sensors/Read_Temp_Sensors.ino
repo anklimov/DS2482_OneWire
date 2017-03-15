@@ -1,3 +1,10 @@
+/*
+ * Read_Temp_Sensors.ino
+ * Example Sketch for the DS2482_OneWire library
+ *
+ */
+
+
 #include <OneWire.h>
 #include <DallasTemperature.h>
 

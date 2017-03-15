@@ -1,0 +1,7 @@
+#
+# .gitignore
+#
+
+# Ignore backup files #
+*~
+*.bak

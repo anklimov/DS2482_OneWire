@@ -1,3 +1,10 @@
+/*
+ * I2C_Scanner.ino
+ * Example Sketch for the DS2482_OneWire library
+ *
+ */
+
+
 #include <Wire.h>
 
 void setup()

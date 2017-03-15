@@ -1,3 +1,10 @@
+/*
+ * DallasTemperature.ino
+ * Example Sketch for the DS2482_OneWire library
+ *
+ */
+
+
 #include <Wire.h>
 #include <OneWire.h>
 
