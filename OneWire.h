@@ -1,29 +1,51 @@
+/*
+ * OneWire.h
+ * - Part of the "DS2482_OneWire" Arduino library
+ *
+ * Portions Copyright (C) 2017 Gerad Munsch <gmunsch@unforgivendevelopment.com>
+ * See README.md for additional author/copyright info.
+ *
+ */
+
 #ifndef __ONEWIRE_H__
 #define __ONEWIRE_H__
 
 #include <inttypes.h>
 
-// Chose between a table based CRC (flash expensive, fast)
-// or a computed CRC (smaller, slow)
+/*
+ * The definition below ("ONEWIRE_CRC8_TABLE") defines the behavior of CRC
+ * calculation.
+ *
+ * Define (ie: leave uncommented) to use pre-computed, table-based CRC calculation --
+ * -- fast calculations, but uses more flash memory
+ *
+ * Don't define (ie: comment out) to compute the CRC values in real-time --
+ * -- smaller code size, but performs computations slower than the lookup table
+ *
+ */
+
 #define ONEWIRE_CRC8_TABLE 			1
 
 #define DS2482_COMMAND_RESET		0xF0	// Device reset
 
 #define DS2482_COMMAND_SRP			0xE1 	// Set read pointer
-	#define DS2482_POINTER_STATUS		0xF0
-		#define DS2482_STATUS_BUSY			(1<<0)
-		#define DS2482_STATUS_PPD			(1<<1)
-		#define DS2482_STATUS_SD			(1<<2)
-		#define DS2482_STATUS_LL			(1<<3)
-		#define DS2482_STATUS_RST 			(1<<4)
-		#define DS2482_STATUS_SBR			(1<<5)
-		#define DS2482_STATUS_TSB 			(1<<6)
-		#define DS2482_STATUS_DIR 			(1<<7)
-	#define DS2482_POINTER_DATA			0xE1
-	#define DS2482_POINTER_CONFIG		0xC3
-		#define DS2482_CONFIG_APU			(1<<0)
-		#define DS2482_CONFIG_SPU			(1<<2)
-		#define DS2482_CONFIG_1WS			(1<<3)
+
+#define DS2482_POINTER_STATUS		0xF0
+#define DS2482_STATUS_BUSY			(1<<0)
+#define DS2482_STATUS_PPD			(1<<1)
+#define DS2482_STATUS_SD			(1<<2)
+#define DS2482_STATUS_LL			(1<<3)
+#define DS2482_STATUS_RST 			(1<<4)
+#define DS2482_STATUS_SBR			(1<<5)
+#define DS2482_STATUS_TSB 			(1<<6)
+#define DS2482_STATUS_DIR 			(1<<7)
+
+#define DS2482_POINTER_DATA			0xE1
+
+#define DS2482_POINTER_CONFIG		0xC3
+#define DS2482_CONFIG_APU			(1<<0)
+#define DS2482_CONFIG_SPU			(1<<2)
+#define DS2482_CONFIG_1WS			(1<<3)
 
 
 #define DS2482_COMMAND_WRITECONFIG	0xD2
@@ -41,8 +63,7 @@
 #define DS2482_ERROR_SHORT			(1<<1)
 #define DS2482_ERROR_CONFIG			(1<<2)
 
-class OneWire
-{
+class OneWire {
 public:
 	OneWire();
 	OneWire(uint8_t address);
@@ -96,4 +117,4 @@ private:
 	uint8_t searchLastDeviceFlag;
 };
 
-#endif
+#endif	/* __ONEWIRE_H__ */
