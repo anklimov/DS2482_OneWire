@@ -1,3 +1,16 @@
 #
 # .gitattributes
 #
+
+# Source Files #
+*.c						eol=lf
+*.cpp					eol=lf
+*.h						eol=lf
+*.ino					eol=lf
+*.pde					eol=lf
+
+
+# Text Files #
+*.txt					eol=crlf
+*.md					eol=crlf
+library.properties		eol=crlf
