@@ -7,61 +7,101 @@
  *
  */
 
+/* --- Include Guard --- */
 #ifndef __ONEWIRE_H__
 #define __ONEWIRE_H__
+/* --------------------- */
 
 #include <inttypes.h>
 
-/*
- * The definition below ("ONEWIRE_CRC8_TABLE") defines the behavior of CRC
+/**
+ * The definition below ("USE_ONEWIRE_CRC8_TABLE") defines the behavior of CRC
  * calculation.
  *
- * Define (ie: leave uncommented) to use pre-computed, table-based CRC calculation --
- * -- fast calculations, but uses more flash memory
- *
- * Don't define (ie: comment out) to compute the CRC values in real-time --
- * -- smaller code size, but performs computations slower than the lookup table
+ * VALUE:
+ * * 1	- use pre-computed, table-based CRC calculation -- performs fast calculations, but uses more flash memory
+ * * 0	- compute the CRC values on-demand -- smaller code size, but performs computations slower than the lookup table
  *
  */
-
-#define ONEWIRE_CRC8_TABLE 			1
-
-#define DS2482_COMMAND_RESET		0xF0	// Device reset
-
-#define DS2482_COMMAND_SRP			0xE1 	// Set read pointer
-
-#define DS2482_POINTER_STATUS		0xF0
-#define DS2482_STATUS_BUSY			(1<<0)
-#define DS2482_STATUS_PPD			(1<<1)
-#define DS2482_STATUS_SD			(1<<2)
-#define DS2482_STATUS_LL			(1<<3)
-#define DS2482_STATUS_RST 			(1<<4)
-#define DS2482_STATUS_SBR			(1<<5)
-#define DS2482_STATUS_TSB 			(1<<6)
-#define DS2482_STATUS_DIR 			(1<<7)
-
-#define DS2482_POINTER_DATA			0xE1
-
-#define DS2482_POINTER_CONFIG		0xC3
-#define DS2482_CONFIG_APU			(1<<0)
-#define DS2482_CONFIG_SPU			(1<<2)
-#define DS2482_CONFIG_1WS			(1<<3)
+#define USE_ONEWIRE_CRC8_TABLE 			1
 
 
-#define DS2482_COMMAND_WRITECONFIG	0xD2
-#define DS2482_COMMAND_RESETWIRE	0xB4
-#define DS2482_COMMAND_WRITEBYTE	0xA5
-#define DS2482_COMMAND_READBYTE		0x96
-#define DS2482_COMMAND_SINGLEBIT	0x87
-#define DS2482_COMMAND_TRIPLET		0x78
+/**
+ * Define device constants, such as commands, register values, etc.
+ */
+#define DS2482_COMMAND_RESET			0xF0	/* Device reset */
+#define DS2482_COMMAND_SRP				0xE1	/* Set read pointer */
 
-#define WIRE_COMMAND_SKIP			0xCC
-#define WIRE_COMMAND_SELECT			0x55
-#define WIRE_COMMAND_SEARCH			0xF0
+#define DS2482_POINTER_STATUS			0xF0
+#define DS2482_POINTER_DATA				0xE1
+#define DS2482_POINTER_CONFIG			0xC3
 
-#define DS2482_ERROR_TIMEOUT		(1<<0)
-#define DS2482_ERROR_SHORT			(1<<1)
-#define DS2482_ERROR_CONFIG			(1<<2)
+#define DS2482_COMMAND_WRITECONFIG		0xD2
+#define DS2482_COMMAND_RESETWIRE		0xB4
+#define DS2482_COMMAND_WRITEBYTE		0xA5
+#define DS2482_COMMAND_READBYTE			0x96
+#define DS2482_COMMAND_SINGLEBIT		0x87
+#define DS2482_COMMAND_TRIPLET			0x78
+
+#define WIRE_COMMAND_SKIP				0xCC
+#define WIRE_COMMAND_SELECT				0x55
+#define WIRE_COMMAND_SEARCH				0xF0
+
+
+#define DS2482_STATUS_BUSY				(1<<0)
+#define DS2482_STATUS_PPD				(1<<1)
+#define DS2482_STATUS_SD				(1<<2)
+#define DS2482_STATUS_LL				(1<<3)
+#define DS2482_STATUS_RST 				(1<<4)
+#define DS2482_STATUS_SBR				(1<<5)
+#define DS2482_STATUS_TSB 				(1<<6)
+#define DS2482_STATUS_DIR 				(1<<7)
+
+#define DS2482_CONFIG_APU				(1<<0)
+#define DS2482_CONFIG_SPU				(1<<2)
+#define DS2482_CONFIG_1WS				(1<<3)
+
+#define DS2482_ERROR_TIMEOUT			(1<<0)
+#define DS2482_ERROR_SHORT				(1<<1)
+#define DS2482_ERROR_CONFIG				(1<<2)
+
+
+/**
+ * Define 'ONEWIRE_CRC8_TABLE' based on the value of 'USE_ONEWIRE_CRC8_TABLE'
+ */
+#ifdef USE_ONEWIRE_CRC8_TABLE	/* Check that 'USE_ONEWIRE_CRC8_TABLE' is defined before checking its value */
+	if (USE_ONEWIRE_CRC8_TABLE == 1 || USE_ONEWIRE_CRC8_TABLE == true) {
+		#ifdef ONEWIRE_CRC8_TABLE	/* If 'ONEWIRE_CRC8_TABLE' is already defined, redefine it ensuring proper value */
+			#undef ONEWIRE_CRC8_TABLE
+			#define ONEWIRE_CRC8_TABLE 1
+		#else						/* Otherwise, we can just define it with the proper value. */
+			#define ONEWIRE_CRC8_TABLE 1
+		#endif
+	} else if (USE_ONEWIRE_CRC8_TABLE == 0 || USE_ONEWIRE_CRC8_TABLE == false) {
+		#ifdef ONEWIRE_CRC8_TABLE
+			#undef ONEWIRE_CRC8_TABLE
+		#endif
+	} else {	/* Handle cases where 'USE_ONEWIRE_CRC8_TABLE' contains an unexpected value */
+		/*
+		* If 'ONEWIRE_CRC8_TABLE' is defined, assume that the CRC table should be used, and
+		* redefine it properly. Otherwise, leave things 'as-is'.
+		*/
+		#ifdef ONEWIRE_CRC8_TABLE
+			#undef ONEWIRE_CRC8_TABLE
+			#define ONEWIRE_CRC8_TABLE 1
+		#endif
+	}
+#else	/* 'USE_ONEWIRE_CRC8_TABLE' -- if not defined, use the same logic as if it were to contain an invalid value */
+	/*
+	 * If 'ONEWIRE_CRC8_TABLE' is defined, assume that the CRC table should be used, and
+	 * redefine it properly. Otherwise, leave things 'as-is'.
+	 */
+	#ifdef ONEWIRE_CRC8_TABLE
+		#undef ONEWIRE_CRC8_TABLE
+		#define ONEWIRE_CRC8_TABLE 1
+	#endif
+#endif
+
 
 class OneWire {
 public:
@@ -91,7 +131,11 @@ public:
 	void wireResetSearch();
 	uint8_t wireSearch(uint8_t *address);
 
-	// emulation of original OneWire library
+	/**
+	 * Emulation of the "standard" Arduino OneWire library.
+	 * Homepage:	https://www.pjrc.com/teensy/td_libs_OneWire.html
+	 * Source Code:	https://github.com/PaulStoffregen/OneWire
+	 */
 	void reset_search();
 	uint8_t search(uint8_t *newAddr);
 	static uint8_t crc8(const uint8_t *addr, uint8_t len);
@@ -117,4 +161,4 @@ private:
 	uint8_t searchLastDeviceFlag;
 };
 
-#endif	/* __ONEWIRE_H__ */
+#endif	/* '__ONEWIRE_H__' (end of "Include Guard") */
