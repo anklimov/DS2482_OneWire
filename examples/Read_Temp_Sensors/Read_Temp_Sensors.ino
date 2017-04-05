@@ -5,7 +5,7 @@
  */
 
 
-#include <OneWire.h>
+#include <DS2482_OneWire.h>
 #include <DallasTemperature.h>
 
 // This is required for the Arduino IDE + DS2482
@@ -27,7 +27,7 @@ void printAddress(DeviceAddress deviceAddress)
     if (deviceAddress[i] < 16) Serial.print("0");
     Serial.print(deviceAddress[i], HEX);
     if (i<7) Serial.print(", ");
-    
+
   }
   Serial.print(" }");
 }
@@ -36,36 +36,36 @@ void setup()
 {
   Serial.begin(9600);
   Serial.println("DS18B20 search");
-  
+
   sensors.begin();
-  
+
   DeviceAddress currAddress;
   uint8_t numberOfDevices = sensors.getDeviceCount();
-  
+
   for (int i=0; i<numberOfDevices; i++)
   {
     sensors.getAddress(currAddress, i);
     printAddress(currAddress);
-    Serial.println();  
+    Serial.println();
   }
 }
-  
+
 void loop()
 {
   Serial.println("Requesting temperatures...");
   sensors.requestTemperatures();
-  
+
   DeviceAddress currAddress;
   uint8_t numberOfDevices = sensors.getDeviceCount();
-  
+
   for (int i=0; i<numberOfDevices; i++)
   {
     sensors.getAddress(currAddress, i);
     printAddress(currAddress);
     Serial.print(": ");
     Serial.print(sensors.getTempCByIndex(i));
-    Serial.println();  
+    Serial.println();
   }
-  
+
   delay(10000);
 }

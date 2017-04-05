@@ -61,7 +61,7 @@ void OneWire::writeByte(uint8_t data) {
 
 
 uint8_t OneWire::readByte() {
-	Wire.requestFrom(mAddress,1u);
+	Wire.requestFrom(mAddress, 1u);
 	return Wire.read();
 }
 
@@ -125,25 +125,49 @@ uint8_t OneWire::readConfig() {
 }
 
 
+/**
+ * Set the strong pullup bit. The strong pullup bit is used to activate the strong pullup function prior to a '1-Wire
+ * Write Byte' or a '1-Wire Single Bit' command. Strong pullup is commonly used with 1-Wire EEPROM devices when copying
+ * scratchpad data to the main memory, when performing an SHA-1 computation, and/or with parasitically-powered devices,
+ * such as temperature sensors or A/D converters. See the respective device data sheets for information as to the timing
+ * and use of the SPU (strong pullup) bit throughout the communications protocol.
+ *
+ * The SPU bit must be set immediately prior to issuing the command that puts the 1-Wire device into the state where it
+ * needs the extra power.
+ *
+ * IMPORTANT: The SPU bit also affects the 1-Wire Reset command. If enabled, it can cause incorrect reading of the
+ *            presence pulse, and may cause a violation of the device's absolute maximum rating.
+ *
+ * Many details about the use of the SPU bit are located on Page 7 of the DS2482-100 datasheet.
+ *
+ * @brief Activates the strong pullup function for the following transaction.
+ */
 void OneWire::setStrongPullup() {
 	writeConfig(readConfig() | DS2482_CONFIG_SPU);
 }
 
 
+/**
+ * Manually clears the SPU (strong pullup) bit manually, in the event that the other triggers have not been fired.
+ *
+ * @brief Manually clear the strong pullup bit in the DS2482 config register.
+ */
 void OneWire::clearStrongPullup() {
 	writeConfig(readConfig() & !DS2482_CONFIG_SPU);
 }
 
 
 /**
- * Wait for a limited period of time for the busy bit in the status register to
- * clear. If the timeout is reached, it is likely an error has occurred.
+ * Wait for a limited period of time for the busy bit in the status register to clear. If the timeout is reached, it is
+ * likely an error has occurred.
+ *
+ * @brief Wait for a brief period of time to allow the 1-Wire bus to become free.
  */
 uint8_t OneWire::waitOnBusy() {
 	uint8_t status;
 
 	/* Check register status every 20 microseconds */
-	for (int i = 1000; i > 0; i--) 	{
+	for (int i = 1000; i > 0; i--) {
 		status = readStatus();
 
 		/* Break out of loop if the busy status bit clears up */
@@ -166,7 +190,15 @@ uint8_t OneWire::waitOnBusy() {
 
 
 /**
- * Write data to the config register
+ * Write data to the config register. The function accepts an unsigned byte value, with the lower 4 bits containing the
+ * desired config register values. The necessary function of setting the upper 4 bits to the one's complement of the
+ * lower 4 bits before writing the data to the register is handled within this function. Confirmation that the write was
+ * successful is done by reading back the config register, and comparing it against the original byte value, as any read
+ * actions from the config register have the upper 4 bits set to 0000b; as such, the values should match.
+ *
+ * @brief Write data to the config register.
+ *
+ * @param[in]	config	An unsigned byte value, with the lower 4 bytes containing the desired config register values.
  */
 void OneWire::writeConfig(uint8_t config) {
 	waitOnBusy();
@@ -176,7 +208,7 @@ void OneWire::writeConfig(uint8_t config) {
 	/*
 	 * The config register expects its data in the following format:
 	 * - Bytes 0-3: config data
-	 * - Bytes 4-7: complement of bytes 0-3
+	 * - Bytes 4-7: one's complement of bytes 0-3
 	 */
 	writeByte(config | (~config)<<4);
 	end();
@@ -184,7 +216,7 @@ void OneWire::writeConfig(uint8_t config) {
 	/*
 	 * Readback of the config register will return data in the following format:
 	 * - Bytes 0-3: config data
-	 * - Bytes 4-7: 0000
+	 * - Bytes 4-7: 0000b
 	 */
 	if (readByte() != config) {
 		mError = DS2482_ERROR_CONFIG;
@@ -228,7 +260,13 @@ uint8_t OneWire::wireReset() {
 
 
 /**
- * Write a single data byte to the 1-Wire line.
+ * Write a single data byte to the 1-Wire line. Optionally, the strong pullup bit may be activated, causing the strong
+ * pullup to take effect for this transaction.
+ *
+ * @brief Write one byte of data to the 1-Wire bus.
+ *
+ * @param[in]	data	An unsigned byte value containing the byte to be written to the 1-Wire line.
+ * @param[in]	power	An optional, unsigned byte value, activates the SPU function when containing a value >= 1.
  */
 void OneWire::wireWriteByte(uint8_t data, uint8_t power) {
 	waitOnBusy();
@@ -243,7 +281,9 @@ void OneWire::wireWriteByte(uint8_t data, uint8_t power) {
 	end();
 }
 
-// Generates eight read-data time slots on the 1-Wire line and stores result in the Read Data Register.
+/**
+ * Generates eight read-data time slots on the 1-Wire line and stores result in the Read Data Register.
+ */
 uint8_t OneWire::wireReadByte() {
 	waitOnBusy();
 
@@ -256,12 +296,20 @@ uint8_t OneWire::wireReadByte() {
 	return readData();
 }
 
-// Generates a single 1-Wire time slot with a bit value “V” as specified by the bit byte at the 1-Wire line
-// (see Table 2). A V value of 0b generates a write-zero time slot (Figure 5); a V value of 1b generates a
-// write-one time slot, which also functions as a read-data time slot (Figure 6). In either case, the logic
-// level at the 1-Wire line is tested at tMSR and SBR is updated.
-void OneWire::wireWriteBit(uint8_t data, uint8_t power)
-{
+/**
+ * Generates a single 1-Wire Time Slot with a bit value “V”, as specified by the bit byte, at the 1-Wire line (Table 2).
+ * A "V" value of 0b generates a Write-Zero Time Slot (Figure 5); a "V" value of 1b generates a Write-One Time Slot,
+ * which also functions as a Read-Data Time Slot (Figure 6). In any case, the logic level at the 1-Wire line is queried
+ * at 'tMSR', and 'SBR' is updated.
+ *
+ * NOTE: See the DS2482-100 datasheet for the tables and figures referenced above.
+ *
+ * @brief Generates a single 1-Wire timeslot.
+ *
+ * @param[in]	data	An unsigned byte value, with the MSB containing the bit which determines the action to be taken.
+ * @param[in]	power	An optional, unsigned byte value, activates the SPU function when containing a value >= 1.
+ */
+void OneWire::wireWriteBit(uint8_t data, uint8_t power) {
 	waitOnBusy();
 	if (power)
 		setStrongPullup();
@@ -379,7 +427,10 @@ static const uint8_t PROGMEM dscrc_table[] = {
 	 26, 153, 199,  37, 123,  58, 100, 134, 216,  91,   5, 231, 185, 140, 210,  48, 110, 237, 179,  81,  15,  78,  16,
 	242, 172,  47, 113, 147, 205,  17,  79, 173, 243, 112,  46, 204, 146, 211, 141, 111,  49, 178, 236,  14,  80, 175,
 	241,  19,  77, 206, 144, 114,  44, 109,  51, 209, 143,  12,  82, 176, 238,  50, 108, 142, 208,  83,  13, 239, 177,
-	240,174,76,18,145,207,45,115,202,148,118,40,171,245,23,73,8,86,180,234,105,55,213,139,87,9,235,181,54,104,138,212,149,203,41,119,244,170,72,22,233,183,85,11,136,214,52,106,43,117,151,201,74,20,246,168,116,42,200,150,21,75, 169, 247, 182, 232,  10,  84, 215, 137, 107,  53
+	240, 174,  76,  18, 145, 207,  45, 115, 202, 148, 118,  40, 171, 245,  23,  73,   8,  86, 180, 234, 105,  55, 213,
+	139,  87,   9, 235, 181,  54, 104, 138, 212, 149, 203,  41, 119, 244, 170,  72,  22, 233, 183,  85,  11, 136, 214,
+	 52, 106,  43, 117, 151, 201,  74,  20, 246, 168, 116,  42, 200, 150,  21,  75, 169, 247, 182, 232,  10,  84, 215,
+	137, 107,  53
 };
 
 //
@@ -395,6 +446,7 @@ uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len) {
 	while (len--) {
 		crc = pgm_read_byte(dscrc_table + (crc ^ *addr++));
 	}
+
 	return crc;
 }
 
@@ -403,8 +455,7 @@ uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len) {
 // Compute a Dallas Semiconductor 8 bit CRC directly.
 // this is much slower, but much smaller, than the lookup table.
 //
-uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len)
-{
+uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len) {
 	uint8_t crc = 0;
 
 	while (len--) {
@@ -412,10 +463,15 @@ uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len)
 		for (uint8_t i = 8; i; i--) {
 			uint8_t mix = (crc ^ inbyte) & 0x01;
 			crc >>= 1;
-			if (mix) crc ^= 0x8C;
+
+			if (mix) {
+				crc ^= 0x8C;
+			}
+
 			inbyte >>= 1;
 		}
 	}
+
 	return crc;
 }
 #endif
@@ -426,68 +482,52 @@ uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len)
 
 // This is a lazy way of getting compatibility with DallasTemperature
 // Not all functions are implemented, only those used in DallasTemeperature
-void OneWire::reset_search()
-{
+void OneWire::reset_search() {
 	wireResetSearch();
 }
 
-uint8_t OneWire::search(uint8_t *newAddr)
-{
+uint8_t OneWire::search(uint8_t *newAddr) {
 	return wireSearch(newAddr);
 }
 
 // Perform a 1-Wire reset cycle. Returns 1 if a device responds
 // with a presence pulse.  Returns 0 if there is no device or the
 // bus is shorted or otherwise held low for more than 250uS
-uint8_t OneWire::reset(void)
-{
+uint8_t OneWire::reset(void) {
 	return wireReset();
 }
 
 // Issue a 1-Wire rom select command, you do the reset first.
-void OneWire::select(const uint8_t rom[8])
-{
+void OneWire::select(const uint8_t rom[8]) {
 	wireSelect(rom);
 }
 
 // Issue a 1-Wire rom skip command, to address all on bus.
-void OneWire::skip(void)
-{
+void OneWire::skip(void) {
 	wireSkip();
 }
 
 // Write a byte.
 // Ignore the power bit
-void OneWire::write(uint8_t v, uint8_t power)
-{
+void OneWire::write(uint8_t v, uint8_t power) {
 	wireWriteByte(v, power);
 }
 
 // Read a byte.
-uint8_t OneWire::read(void)
-{
+uint8_t OneWire::read(void) {
 	return wireReadByte();
 }
 
 // Read a bit.
-uint8_t OneWire::read_bit(void)
-{
+uint8_t OneWire::read_bit(void) {
 	return wireReadBit();
 }
 
 // Write a bit.
-void OneWire::write_bit(uint8_t v)
-{
+void OneWire::write_bit(uint8_t v) {
 	wireWriteBit(v);
 }
 
 // ****************************************
 // End mirrored functions
 // ****************************************
-
-
-
-
-
-
-
