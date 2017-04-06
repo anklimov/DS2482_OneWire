@@ -7,12 +7,12 @@
  *
  */
 
-/* --- Include Guard --- */
-#ifndef __ONEWIRE_H__
-#define __ONEWIRE_H__
-/* --------------------- */
+#ifndef __DS2482OW__ONEWIRE_H__
+#define __DS2482OW__ONEWIRE_H__
+
 
 #include <inttypes.h>
+
 
 /**
  * The definition below ("USE_ONEWIRE_CRC8_TABLE") defines the behavior of CRC
@@ -161,4 +161,4 @@ private:
 	uint8_t searchLastDeviceFlag;
 };
 
-#endif	/* '__ONEWIRE_H__' (end of "Include Guard") */
+#endif	/* __DS2482OW__ONEWIRE_H__ */

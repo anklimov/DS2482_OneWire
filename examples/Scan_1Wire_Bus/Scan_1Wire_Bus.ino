@@ -6,7 +6,7 @@
 
 
 #include <Wire.h>
-#include <OneWire.h>
+#include <DS2482_OneWire.h>
 
 OneWire oneWire;
 
