@@ -2,6 +2,37 @@
 # .gitignore
 #
 
-# Ignore backup files #
+# COMMON TEMPORARY AND BACKUP FILES #
 *~
 *.bak
+*.tmp
+tmp*
+
+# VARIOUS OBJECT AND BINARY FILES #
+*.o
+*.so
+*.bin
+*.hex
+*.elf
+*.dll
+*.exe
+
+# VARIOUS IDE GENERATED FILES #
+## JetBrains IDEs (specifically: CLion) ##
+### CMake stuff ###
+CMakeLists.txt
+cmake-build-debug/
+
+## Microsoft VS Code ##
+.vscode/
+
+
+# GENERATED FILES #
+## general "out" directory ##
+out/
+
+## ZIP releases of the library ##
+out/library-zip/*.zip
+
+# XXX: Ignore docs/doxygen (for now) #
+docs/doxygen/
