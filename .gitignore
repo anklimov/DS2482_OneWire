@@ -5,3 +5,4 @@
 # Ignore backup files #
 *~
 *.bak
+*.zip

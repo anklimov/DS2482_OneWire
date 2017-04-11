@@ -282,6 +282,42 @@ void OneWire::wireWriteByte(uint8_t data, uint8_t power) {
 }
 
 /**
+ * Write multiple bytes to the 1-Wire bus.
+ */
+void OneWire::wireWriteBytes(const uint8_t *dbuf, uint16_t count, uint8_t power) {
+	waitOnBusy();
+
+	/* begin the I2C transaction */
+	begin();
+
+	/* write out all of our data in one continuous I2C transaction */
+	for (uint16_t i = 0; i < count; i++) {
+		/* set the strong pullup bit before each write, if necessary */
+		if (power) {
+			uint8_t cfgreg = 0x00;
+			Wire.write(DS2482_COMMAND_SRP);
+			Wire.write(DS2482_POINTER_CONFIG);
+			Wire.requestFrom(mAddress, 1u);
+			cfgreg = Wire.read();
+			cfgreg = (cfgreg | DS2482_CONFIG_SPU);
+			Wire.write(DS2482_COMMAND_WRITECONFIG);
+			Wire.write(cfgreg | (~cfgreg)<<4);
+			Wire.requestFrom(mAddress, 1u);
+			if (Wire.read() != cfgreg) {
+				mError = DS2482_ERROR_CONFIG;
+			}
+		}
+
+		/* write the current byte */
+		Wire.write(DS2482_COMMAND_WRITEBYTE);
+		Wire.write(dbuf[i]);
+	}
+
+	/* end the I2C transaction */
+	end();
+}
+
+/**
  * Generates eight read-data time slots on the 1-Wire line and stores result in the Read Data Register.
  */
 uint8_t OneWire::wireReadByte() {

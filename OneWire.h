@@ -13,17 +13,28 @@
 
 #include <inttypes.h>
 
+#if defined(__AVR__)
+#include <util/crc16.h>
+#endif
+
+#if ARDUINO >= 100
+#include "Arduino.h"		// for delayMicroseconds, digitalPinToBitMask, etc
+#else
+#include "WProgram.h"		// for delayMicroseconds
+#include "pins_arduino.h"	// for digitalPinToBitMask, etc
+#endif
+
 
 /**
  * The definition below ("USE_ONEWIRE_CRC8_TABLE") defines the behavior of CRC
  * calculation.
  *
  * VALUE:
- * * 1	- use pre-computed, table-based CRC calculation -- performs fast calculations, but uses more flash memory
- * * 0	- compute the CRC values on-demand -- smaller code size, but performs computations slower than the lookup table
+ * * (defined)		- use pre-computed, table-based CRC calculation: fast calculations, but uses more flash memory
+ * * (commented)	- compute the CRC values on-demand: smaller code size, but computation slower than the lookup table
  *
  */
-#define USE_ONEWIRE_CRC8_TABLE 			1
+#define ONEWIRE_CRC8_TABLE 				1
 
 
 /**
@@ -66,43 +77,6 @@
 #define DS2482_ERROR_CONFIG				(1<<2)
 
 
-/**
- * Define 'ONEWIRE_CRC8_TABLE' based on the value of 'USE_ONEWIRE_CRC8_TABLE'
- */
-#ifdef USE_ONEWIRE_CRC8_TABLE	/* Check that 'USE_ONEWIRE_CRC8_TABLE' is defined before checking its value */
-	if (USE_ONEWIRE_CRC8_TABLE == 1 || USE_ONEWIRE_CRC8_TABLE == true) {
-		#ifdef ONEWIRE_CRC8_TABLE	/* If 'ONEWIRE_CRC8_TABLE' is already defined, redefine it ensuring proper value */
-			#undef ONEWIRE_CRC8_TABLE
-			#define ONEWIRE_CRC8_TABLE 1
-		#else						/* Otherwise, we can just define it with the proper value. */
-			#define ONEWIRE_CRC8_TABLE 1
-		#endif
-	} else if (USE_ONEWIRE_CRC8_TABLE == 0 || USE_ONEWIRE_CRC8_TABLE == false) {
-		#ifdef ONEWIRE_CRC8_TABLE
-			#undef ONEWIRE_CRC8_TABLE
-		#endif
-	} else {	/* Handle cases where 'USE_ONEWIRE_CRC8_TABLE' contains an unexpected value */
-		/*
-		* If 'ONEWIRE_CRC8_TABLE' is defined, assume that the CRC table should be used, and
-		* redefine it properly. Otherwise, leave things 'as-is'.
-		*/
-		#ifdef ONEWIRE_CRC8_TABLE
-			#undef ONEWIRE_CRC8_TABLE
-			#define ONEWIRE_CRC8_TABLE 1
-		#endif
-	}
-#else	/* 'USE_ONEWIRE_CRC8_TABLE' -- if not defined, use the same logic as if it were to contain an invalid value */
-	/*
-	 * If 'ONEWIRE_CRC8_TABLE' is defined, assume that the CRC table should be used, and
-	 * redefine it properly. Otherwise, leave things 'as-is'.
-	 */
-	#ifdef ONEWIRE_CRC8_TABLE
-		#undef ONEWIRE_CRC8_TABLE
-		#define ONEWIRE_CRC8_TABLE 1
-	#endif
-#endif
-
-
 class OneWire {
 public:
 	OneWire();
@@ -136,16 +110,78 @@ public:
 	 * Homepage:	https://www.pjrc.com/teensy/td_libs_OneWire.html
 	 * Source Code:	https://github.com/PaulStoffregen/OneWire
 	 */
-	void reset_search();
-	uint8_t search(uint8_t *newAddr);
-	static uint8_t crc8(const uint8_t *addr, uint8_t len);
 	uint8_t reset(void);
 	void select(const uint8_t rom[8]);
 	void skip(void);
+
+	/**
+	 * Write a byte. If 'power' is '1', then the wire is held high at the end for parasitically-powered devices. It
+	 * is necessary to manually depower the line at some point, either by calling "depower()", or doing another read or
+	 * write operation.
+	 *
+	 * @brief Write a byte to the OneWire bus.
+	 *
+	 * @param[in] v The byte to be written to the bus.
+	 * @param[in] power Indicates that there are parasitically-powered devices on the bus, and to hold the line high at
+	 *                  the end of the operation.
+	 *
+	 */
 	void write(uint8_t v, uint8_t power = 0);
+
+	void write_bytes(const uint8_t *buf, uint16_t count, bool power = 0);
+
+
+	/**
+	 * Read a single byte from the OneWire bus.
+	 *
+	 * @brief Read one byte from the OneWire bus.
+	 *
+	 * @return The byte that was read from the OneWire bus.
+	 *
+	 */
 	uint8_t read(void);
-	uint8_t read_bit(void);
+
+	void read_bytes(uint8_t *buf, uint16_t count);
+
+
+	/**
+	 * Write a bit to the OneWire bus.
+	 *
+	 * @brief Write one bit to the bus.
+	 *
+	 * @param[in] v Contains the bit to be written to the bus.
+	 *
+	 */
 	void write_bit(uint8_t v);
+
+
+	/**
+	 * Read a bit from the OneWire bus.
+	 *
+	 * @brief Read one bit from the bus.
+	 *
+	 * @return The bit that has been read from the bus.
+	 *
+	 */
+	uint8_t read_bit(void);
+
+	/**
+	 * Remove power from the bus. Only necessary after a write() call with the 'power' parameter set to '1', or if the
+	 * write_bit() function was called.
+	 *
+	 * @brief Remove power from the bus.
+	 *
+	 */
+	void depower(void);
+
+	void reset_search();
+
+	void target_search(uint8_t family_code);
+
+	uint8_t search(uint8_t *newAddr);
+
+	static uint8_t crc8(const uint8_t *addr, uint8_t len);
+
 
 private:
 	void begin();
