@@ -1,16 +1,50 @@
 #
 # .gitattributes
 #
+# Provides finer-grained control over the attributes of the files committed into
+# the project's git repository.
+#
 
-# Source Files #
-*.c						eol=lf
-*.cpp					eol=lf
-*.h						eol=lf
-*.ino					eol=lf
-*.pde					eol=lf
+## Force UNIX-style line endings for source files ##
+*.c						text eol=lf
+*.h						text eol=lf
+*.cpp					text eol=lf
+*.hpp					text eol=lf
+*.ino					text eol=lf
+*.pde					text eol=lf
+*.sh					text eol=lf
+*.subr					text eol=lf
+*.csh					text eol=lf
+*.fish					text eol=lf
+Doxyfile				text eol=lf
 
 
-# Text Files #
-*.txt					eol=crlf
-*.md					eol=crlf
-library.properties		eol=crlf
+## Force Windows-style line endings for plain-text files ##
+*.txt					text eol=crlf
+*.properties			text eol=crlf
+*.adoc					text eol=crlf
+*.md					text eol=crlf
+*.log					text eol=crlf
+*.xml					text eol=crlf
+*.htm					text eol=crlf
+*.html					text eol=crlf
+*.css					text eol=crlf
+*.js					text eol=crlf
+*.svg					text eol=crlf
+*.csv					text eol=crlf
+*.bat					text eol=crlf
+.gitignore				text eol=crlf
+.gitattributes			text eol=crlf
+AUTHORS					text eol=crlf
+
+
+## Explicitly set some file types as binary ##
+*.png					binary
+*.jpg					binary
+*.jpeg					binary
+*.gif					binary
+*.pdf					binary
+*.docx					binary
+*.xlsx					binary
+*.pptx					binary
+*.zip					binary
