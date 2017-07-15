@@ -1,14 +1,16 @@
-/*
- * OneWireExtraHelpers.cpp
- * - Part of the "DS2482_OneWire" Arduino library
+/**
+ * \file OneWireExtraHelpers.cpp
  *
- * Copyright (C) 2017 Gerad Munsch <gmunsch@unforgivendevelopment.com>
- * See README.md for additional author/copyright info.
- *
+ * \author	Gerad Munsch <gmunsch@unforgivendevelopment.com>
+ * \date	2017
+ * \note	See README.md for any additional author/copyright info.
  */
 
+#include "OneWireExtraHelpers.h"
 
+#ifdef USE_DALLASTEMPERATURE_LIBRARY
 #include <DallasTemperature.h>
+#ifdef USE_DALLASTEMPERATURE_LIBRARY
 
 void OneWireHelpersClass::printDeviceAddress(uint8_t devAddr[8]) {
 	Serial.print("{ ");
@@ -33,6 +35,7 @@ void OneWireHelpersClass::printDeviceAddress(uint8_t devAddr[8]) {
 }
 
 
+#ifdef USE_DALLASTEMPERATURE_LIBRARY
 void OneWireHelpersClass::printDeviceAddress(DeviceAddress devAddr) {
 	Serial.print("{ ");
 
@@ -54,3 +57,4 @@ void OneWireHelpersClass::printDeviceAddress(DeviceAddress devAddr) {
 
 	Serial.print(" }");
 }
+#endif

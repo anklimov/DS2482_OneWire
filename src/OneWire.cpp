@@ -1,15 +1,13 @@
-/**********************************************************************************************************************
- * OneWire.cpp                                                                                                        *
- * - Part of the "DS2482_OneWire" Arduino library                                                                     *
- *                                                                                                                    *
- * Portions Copyright (C) 2017 Gerad Munsch <gmunsch@unforgivendevelopment.com>                                       *
- * See README.md for additional author/copyright info.                                                                *
- *                                                                                                                    *
- **********************************************************************************************************************/
+/**
+ * \file OneWire.cpp
+ *
+ * Portions Copyright (C) 2017 Gerad Munsch <gmunsch@unforgivendevelopment.com>
+ * See README.md for additional author/copyright info.
+ */
 
-/*----------------------------------------------------------------------------*/
-/* INCLUDES                                                                   */
-/*----------------------------------------------------------------------------*/
+/* ---------------------------------------------------------------------------- */
+/* INCLUDES                                                                     */
+/* ---------------------------------------------------------------------------- */
 #include "OneWire.h"
 #include <Wire.h>
 
@@ -85,11 +83,6 @@ void OneWire::deviceReset() {
 }
 
 
-/**
- * Sets the read pointer to the specified register. This action overwrites the
- * read pointer position of any 1-Wire communication command that is currently
- * in progress.
- */
 void OneWire::setReadPointer(uint8_t readPointer) {
 	begin();
 	writeByte(DS2482_COMMAND_SRP);
@@ -189,17 +182,6 @@ uint8_t OneWire::waitOnBusy() {
 }
 
 
-/**
- * Write data to the config register. The function accepts an unsigned byte value, with the lower 4 bits containing the
- * desired config register values. The necessary function of setting the upper 4 bits to the one's complement of the
- * lower 4 bits before writing the data to the register is handled within this function. Confirmation that the write was
- * successful is done by reading back the config register, and comparing it against the original byte value, as any read
- * actions from the config register have the upper 4 bits set to 0000b; as such, the values should match.
- *
- * @brief Write data to the config register.
- *
- * @param[in]	config	An unsigned byte value, with the lower 4 bytes containing the desired config register values.
- */
 void OneWire::writeConfig(uint8_t config) {
 	waitOnBusy();
 	begin();
@@ -451,42 +433,79 @@ uint8_t OneWire::wireSearch(uint8_t *address) {
 	return 1;
 }
 
-#ifdef ONEWIRE_CRC8_TABLE
-// This table comes from Dallas sample code where it is freely reusable,
-// though Copyright (C) 2000 Dallas Semiconductor Corporation
-static const uint8_t PROGMEM dscrc_table[] = {
-	  0,  94, 188, 226,  97,  63, 221, 131, 194, 156, 126,  32, 163, 253,  31,  65, 157, 195,  33, 127, 252, 162,  64,
-	 30,  95,   1, 227, 189,  62,  96, 130, 220,  35, 125, 159, 193,  66,  28, 254, 160, 225, 191,  93,   3, 128, 222,
-	 60,  98, 190, 224,   2,  92, 223, 129,  99,  61, 124,  34, 192, 158,  29,  67, 161, 255,  70,  24, 250, 164,  39,
-	121, 155, 197, 132, 218,  56, 102, 229, 187,  89,   7, 219, 133, 103,  57, 186, 228,   6,  88,  25,  71, 165, 251,
-	120,  38, 196, 154, 101,  59, 217, 135,   4,  90, 184, 230, 167, 249,  27,  69, 198, 152, 122,  36, 248, 166,  68,
-	 26, 153, 199,  37, 123,  58, 100, 134, 216,  91,   5, 231, 185, 140, 210,  48, 110, 237, 179,  81,  15,  78,  16,
-	242, 172,  47, 113, 147, 205,  17,  79, 173, 243, 112,  46, 204, 146, 211, 141, 111,  49, 178, 236,  14,  80, 175,
-	241,  19,  77, 206, 144, 114,  44, 109,  51, 209, 143,  12,  82, 176, 238,  50, 108, 142, 208,  83,  13, 239, 177,
-	240, 174,  76,  18, 145, 207,  45, 115, 202, 148, 118,  40, 171, 245,  23,  73,   8,  86, 180, 234, 105,  55, 213,
-	139,  87,   9, 235, 181,  54, 104, 138, 212, 149, 203,  41, 119, 244, 170,  72,  22, 233, 183,  85,  11, 136, 214,
-	 52, 106,  43, 117, 151, 201,  74,  20, 246, 168, 116,  42, 200, 150,  21,  75, 169, 247, 182, 232,  10,  84, 215,
-	137, 107,  53
+#if (ONEWIRE_USE_CRC8_TABLE == 1)
+/**
+ * \var dscrc_table	A pre-computed table (array) used in the calculation of CRC values.
+ *
+ * \note		Note that, on the AVR architecture, the array is stored in PROGMEM.
+ * \note		This table comes from Dallas sample code, where it is indicated to be freely reusable.
+ * \copyright	Dallas Semiconductor Corporation
+ * \date		2000
+ */
+#ifdef PLATFORM_HAS_PROGMEM_AVAILABLE
+/**
+ * \var dscrc_table	A pre-computed table (array) used in the calculation of CRC values.
+ *
+ * \note			For devices which provide PROGMEM functionality, dscrc_table is declared as a PROGMEM variable type,
+ *					which causes the pre-computed tables to be stored in the device's flash memory, as opposed to being
+ *					stored in RAM -- which can make a significant difference on embedded devices, which typically have a
+ *					significantly larger amount of flash memory as compared to RAM.
+ * \note			This table comes from Dallas sample code, where it is indicated to be freely reusable.
+ * \copyright		Dallas Semiconductor Corporation
+ * \date			2000
+ */
+static const uint8_t dscrc_table[] PROGMEM = {
+#else
+/**
+ * \var dscrc_table	A pre-computed table (array) used in the calculation of CRC values.
+ *
+ * \note		Note that, on the AVR architecture, the array is stored in PROGMEM.
+ * \note		This table comes from Dallas sample code, where it is indicated to be freely reusable.
+ * \copyright	Dallas Semiconductor Corporation
+ * \date		2000
+ */
+static const uint8_t dscrc_table[] = {
+#endif
+	  0,  94, 188, 226,  97,  63, 221, 131, 194, 156, 126,  32, 163, 253,  31,  65,
+	157, 195,  33, 127, 252, 162,  64,  30,  95,   1, 227, 189,  62,  96, 130, 220,
+	 35, 125, 159, 193,  66,  28, 254, 160, 225, 191,  93,   3, 128, 222,  60,  98,
+	190, 224,   2,  92, 223, 129,  99,  61, 124,  34, 192, 158,  29,  67, 161, 255,
+	 70,  24, 250, 164,  39, 121, 155, 197, 132, 218,  56, 102, 229, 187,  89,   7,
+	219, 133, 103,  57, 186, 228,   6,  88,  25,  71, 165, 251, 120,  38, 196, 154,
+	101,  59, 217, 135,   4,  90, 184, 230, 167, 249,  27,  69, 198, 152, 122,  36,
+	248, 166,  68,  26, 153, 199,  37, 123,  58, 100, 134, 216,  91,   5, 231, 185,
+	140, 210,  48, 110, 237, 179,  81,  15,  78,  16, 242, 172,  47, 113, 147, 205,
+	 17,  79, 173, 243, 112,  46, 204, 146, 211, 141, 111,  49, 178, 236,  14,  80,
+	175, 241,  19,  77, 206, 144, 114,  44, 109,  51, 209, 143,  12,  82, 176, 238,
+	 50, 108, 142, 208,  83,  13, 239, 177, 240, 174,  76,  18, 145, 207,  45, 115,
+	202, 148, 118,  40, 171, 245,  23,  73,   8,  86, 180, 234, 105,  55, 213, 139,
+	 87,   9, 235, 181,  54, 104, 138, 212, 149, 203,  41, 119, 244, 170,  72,  22,
+	233, 183,  85,  11, 136, 214,  52, 106,  43, 117, 151, 201,  74,  20, 246, 168,
+	116,  42, 200, 150,  21,  75, 169, 247, 182, 232,  10,  84, 215, 137, 107,  53
 };
 
-//
-// Compute a Dallas Semiconductor 8 bit CRC. These show up in the ROM
-// and the registers.  (note: this might better be done without to
-// table, it would probably be smaller and certainly fast enough
-// compared to all those delayMicrosecond() calls.  But I got
-// confused, so I use this table from the examples.)
-//
+/*
+ * Compute a Dallas Semiconductor 8 bit CRC. These show up in the ROM
+ * and the registers.  (note: this might better be done without to
+ * table, it would probably be smaller and certainly fast enough
+ * compared to all those delayMicrosecond() calls.  But I got
+ * confused, so I use this table from the examples.)
+ */
 uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len) {
 	uint8_t crc = 0;
 
 	while (len--) {
+#ifdef PLATFORM_HAS_PROGMEM_AVAILABLE
 		crc = pgm_read_byte(dscrc_table + (crc ^ *addr++));
+#else
+		crc = dscrc_table + (crc ^ *addr++);
+#endif
 	}
 
 	return crc;
 }
 
-#else	/* ONEWIRE_CRC8_TABLE */
+#elif (ONEWIRE_USE_CRC8_TABLE == 0) || !defined(ONEWIRE_USE_CRC8_TABLE)
 
 // Compute a Dallas Semiconductor 8 bit CRC directly.
 // this is much slower, but much smaller, than the lookup table.
@@ -510,7 +529,7 @@ uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len) {
 
 	return crc;
 }
-#endif
+#endif	/* ONEWIRE_USE_CRC8_TABLE */
 
 // ****************************************
 // These are here to mirror the functions in the original OneWire
@@ -543,23 +562,22 @@ void OneWire::skip(void) {
 	wireSkip();
 }
 
-// Write a byte.
-// Ignore the power bit
+
 void OneWire::write(uint8_t v, uint8_t power) {
 	wireWriteByte(v, power);
 }
 
-// Read a byte.
+
 uint8_t OneWire::read(void) {
 	return wireReadByte();
 }
 
-// Read a bit.
+
 uint8_t OneWire::read_bit(void) {
 	return wireReadBit();
 }
 
-// Write a bit.
+
 void OneWire::write_bit(uint8_t v) {
 	wireWriteBit(v);
 }
