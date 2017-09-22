@@ -1,14 +1,4 @@
-/*
- * OneWire.cpp
- * - Part of the "DS2482_OneWire" Arduino library
- *
- * Portions Copyright (C) 2017 Gerad Munsch <gmunsch@unforgivendevelopment.com>
- * See README.md for additional author/copyright info.
- *
- */
-
-
-#include "OneWire.h"
+#include "DS2482_OneWire.h"
 #include <Wire.h>
 
 // Constructor with no parameters for compatability with OneWire lib

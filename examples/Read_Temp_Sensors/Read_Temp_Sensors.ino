@@ -1,4 +1,4 @@
-#include <OneWire.h>
+#include <DS2482_OneWire.h>
 #include <DallasTemperature.h>
 
 // This is required for the Arduino IDE + DS2482
