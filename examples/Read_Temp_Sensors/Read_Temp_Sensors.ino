@@ -27,7 +27,7 @@ void printAddress(DeviceAddress deviceAddress)
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("DS18B20 search");
   
   sensors.begin();
