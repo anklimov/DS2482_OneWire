@@ -2,7 +2,6 @@
 #define __ONEWIRE_H__
 
 #include <inttypes.h>
-#include <Arduino.h>
 
 // Chose between a table based CRC (flash expensive, fast)
 // or a computed CRC (smaller, slow)
@@ -47,7 +46,7 @@ class OneWire
 public:
 	OneWire();
 	OneWire(uint8_t address);
-
+        void idle(void (*)());
 	uint8_t getAddress();
 	uint8_t getError();
 	uint8_t checkPresence();
@@ -57,9 +56,14 @@ public:
 	uint8_t readStatus();
 	uint8_t readData();
 	uint8_t waitOnBusy();
+	
+       uint8_t busyWait(bool setReadPtr=false);///
+       uint8_t wireReadStatus(bool setPtr);///
+
 	uint8_t readConfig();
 	void writeConfig(uint8_t config);
 	void setStrongPullup();
+	void setActivePullup();
 	void clearStrongPullup();
 	uint8_t wireReset();
 	void wireWriteByte(uint8_t data, uint8_t power = 0);
@@ -69,7 +73,7 @@ public:
 	void wireSkip();
 	void wireSelect(const uint8_t rom[8]);
 	void wireResetSearch();
-	uint8_t wireSearch(uint8_t *address);
+	int8_t wireSearch(uint8_t *address);
 
 	// emulation of original OneWire library
 	void reset_search();
@@ -82,19 +86,28 @@ public:
 	uint8_t read(void);
 	uint8_t read_bit(void);
 	void write_bit(uint8_t v);
-
+	void write_bytes(const uint8_t *buf, uint16_t count, bool power = 0 );
+        void read_bytes(uint8_t *buf, uint16_t count);
+        static uint16_t crc16(const uint8_t* input, uint16_t len, uint16_t crc=0);
+        static bool check_crc16(const uint8_t* input, uint16_t len, const uint8_t* inverted_crc, uint16_t crc = 0);
 private:
 	void begin();
 	uint8_t end();
 	void writeByte(uint8_t);
 	uint8_t readByte();
-
+	uint8_t APU;
 	uint8_t mAddress;
 	uint8_t mError;
 
 	uint8_t searchAddress[8];
-	uint8_t searchLastDiscrepancy;
+	int8_t searchLastDiscrepancy;
 	uint8_t searchLastDeviceFlag;
+	
+	//uint8_t searchAddress[8];
+	uint8_t searchLastDisrepancy;///
+	uint8_t searchExhausted;///
+
+	void (*_idle)();
 };
 
 #endif

@@ -1,4 +1,5 @@
-#include "DS2482_OneWire.h"
+#include <Arduino.h>
+#include "OneWire.h"
 #include <Wire.h>
 
 // Constructor with no parameters for compatability with OneWire lib
@@ -8,6 +9,8 @@ OneWire::OneWire()
 	// Pass 0b00, 0b01, 0b10 or 0b11
 	mAddress = 0x18;
 	mError = 0;
+	APU=0;
+	_idle=0;
 	Wire.begin();
 }
 
@@ -17,7 +20,14 @@ OneWire::OneWire(uint8_t address)
 	// Pass 0b00, 0b01, 0b10 or 0b11
 	mAddress = 0x18 | address;
 	mError = 0;
+	APU=0;
+	_idle=0;
 	Wire.begin();
+}
+
+void OneWire::idle(void (*idle)())
+{
+  _idle = idle;
 }
 
 uint8_t OneWire::getAddress()
@@ -93,14 +103,21 @@ uint8_t OneWire::readData()
 
 // Read the config register
 uint8_t OneWire::readConfig()
-{
+{ int conf;
 	setReadPointer(DS2482_POINTER_CONFIG);
-	return readByte();
+	conf=readByte();
+///	Serial.print("Conf: ");Serial.println(conf,BIN);
+	return conf;
 }
 
 void OneWire::setStrongPullup()
 {
 	writeConfig(readConfig() | DS2482_CONFIG_SPU);
+}
+
+void OneWire::setActivePullup()
+{
+APU=1;
 }
 
 void OneWire::clearStrongPullup()
@@ -112,19 +129,24 @@ void OneWire::clearStrongPullup()
 uint8_t OneWire::waitOnBusy()
 {
 	uint8_t status;
-
-	for(int i=1000; i>0; i--)
+        unsigned long ms=millis()+1000;
+         
+	while (millis()<ms)
 	{
 		status = readStatus();
 		if (!(status & DS2482_STATUS_BUSY))
-			break;
+			return status;
+		   if (_idle)
+    			{
+    			_idle();
+    			}	
+		//Serial.print(".");
 		delayMicroseconds(20);
 	}
 
 	// if we have reached this point and we are still busy, there is an error
-	if (status & DS2482_STATUS_BUSY)
 		mError = DS2482_ERROR_TIMEOUT;
-
+		Serial.println("1w Timeout");
 	// Return the status so we don't need to explicitly do it again
 	return status;
 }
@@ -165,6 +187,9 @@ uint8_t OneWire::wireReset()
 	{
 		mError = DS2482_ERROR_SHORT;
 	}
+	
+	if (APU) writeConfig(readConfig() | DS2482_CONFIG_APU);// | DS2482_CONFIG_SPU);
+//        Serial.print("Reseted: :");readConfig();
 
 	return (status & DS2482_STATUS_PPD) ? true : false;
 }
@@ -228,10 +253,114 @@ void OneWire::wireSelect(const uint8_t rom[8])
 		wireWriteByte(rom[i]);
 }
 
+
+
+///Alternative
+uint8_t OneWire::wireReadStatus(bool setPtr)
+{
+	if (setPtr)
+		setReadPointer(DS2482_POINTER_STATUS);
+	return readByte();
+}
+
+///Alternative
+uint8_t OneWire::busyWait(bool setReadPtr)
+{
+	uint8_t status;
+	int loopCount = 1000;
+	while((status = wireReadStatus(setReadPtr)) & DS2482_STATUS_BUSY)
+	{
+		if (--loopCount <= 0)
+		{
+	///		mTimeout = 1;
+			break;
+		}
+		delayMicroseconds(20);
+	}
+	return status;
+}
+
+
+
+//define ALTSEARCH
+#ifdef ALTSEARCH
+void OneWire::wireResetSearch()
+{
+	searchExhausted = 0;
+	searchLastDisrepancy = 0;
+	
+	for(uint8_t i = 0; i<8; i++) 
+		searchAddress[i] = 0;
+}
+
+int8_t OneWire::wireSearch(uint8_t *newAddr)
+{
+	uint8_t i;
+	uint8_t direction;
+	uint8_t last_zero=0;
+	
+	if (searchExhausted) 
+		return 0;
+	
+	if (!wireReset()) 
+		return 0;
+
+	busyWait(true);
+	wireWriteByte(0xf0);
+	
+	for(i=1;i<65;i++) 
+	{
+		int romByte = (i-1)>>3;
+		int romBit = 1<<((i-1)&7);
+		
+		if (i < searchLastDisrepancy)
+			direction = searchAddress[romByte] & romBit;
+		else
+			direction = i == searchLastDisrepancy;
+		
+		busyWait();
+		begin();
+		Wire.write(0x78); 
+		Wire.write(direction ? 0x80 : 0);
+		end();
+		uint8_t status = busyWait();
+		
+		uint8_t id = status & DS2482_STATUS_SBR;
+		uint8_t comp_id = status & DS2482_STATUS_TSB;
+		direction = status & DS2482_STATUS_DIR;
+		
+		if (id && comp_id)
+			return 0;
+		else
+		{ 
+			if (!id && !comp_id && !direction)
+				last_zero = i;
+		}
+		
+		if (direction)
+			searchAddress[romByte] |= romBit;
+		else
+			searchAddress[romByte] &= (uint8_t)~romBit;
+	}
+
+	searchLastDisrepancy = last_zero;
+
+	if (last_zero == 0) 
+		searchExhausted = 1;
+	
+	for (i=0;i<8;i++) 
+		newAddr[i] = searchAddress[i];
+	
+	return 1;  
+}
+#else
+
+
+
 //  1-Wire reset seatch algorithm
 void OneWire::wireResetSearch()
 {
-	searchLastDiscrepancy = 0;
+	searchLastDiscrepancy = -1;
 	searchLastDeviceFlag = 0;
 
 	for (int i = 0; i < 8; i++)
@@ -242,21 +371,25 @@ void OneWire::wireResetSearch()
 }
 
 // Perform a search of the 1-Wire bus
-uint8_t OneWire::wireSearch(uint8_t *address)
+int8_t OneWire::wireSearch(uint8_t *address)
 {
 	uint8_t direction;
-	uint8_t last_zero=0;
+	int8_t last_zero=-1; ///
 
 	if (searchLastDeviceFlag)
-		return 0;
+		{
+		//Serial.println("last device");
+		return 0;}
 
 	if (!wireReset())
-		return 0;
+	
+	{Serial.println("Reset error");return -1;}
+//Serial.print("S reseted: :");readConfig();		
 
 	waitOnBusy();
-
+        //setStrongPullup();///
 	wireWriteByte(WIRE_COMMAND_SEARCH);
-
+//Serial.print("comser: :");readConfig();
 	for(uint8_t i=0;i<64;i++)
 	{
 		int searchByte = i / 8; 
@@ -274,22 +407,23 @@ uint8_t OneWire::wireSearch(uint8_t *address)
 		end();
 
 		uint8_t status = waitOnBusy();
-
+//Serial.print("triplet: :");readConfig();
 		uint8_t id = status & DS2482_STATUS_SBR;
 		uint8_t comp_id = status & DS2482_STATUS_TSB;
 		direction = status & DS2482_STATUS_DIR;
 
 		if (id && comp_id)
 		{
-			return 0;
+			
+		{Serial.print(status,BIN);Serial.println(" comp_id!");return -2;}
 		}
-		else
-		{
+		
+	///	if (1){
 			if (!id && !comp_id && !direction)
 			{
 				last_zero = i;
 			}
-		}
+	///	}
 
 		if (direction)
 			searchAddress[searchByte] |= searchBit;
@@ -300,14 +434,17 @@ uint8_t OneWire::wireSearch(uint8_t *address)
 
 	searchLastDiscrepancy = last_zero;
 
-	if (!last_zero)
+	if (last_zero==-1)//
 		searchLastDeviceFlag = 1;
 
 	for (uint8_t i=0; i<8; i++)
 		address[i] = searchAddress[i];
 
+//Serial.print("SF: :");readConfig();
+
 	return 1;
 }
+#endif
 
 #if ONEWIRE_CRC8_TABLE
 // This table comes from Dallas sample code where it is freely reusable,
@@ -337,6 +474,37 @@ static const uint8_t PROGMEM dscrc_table[] = {
 // compared to all those delayMicrosecond() calls.  But I got
 // confused, so I use this table from the examples.)
 //
+
+uint16_t OneWire::crc16(const uint8_t* input, uint16_t len, uint16_t crc)
+{
+    static const uint8_t oddparity[16] =
+        { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
+
+    for (uint16_t i = 0 ; i < len ; i++) {
+      // Even though we're just copying a byte from the input,
+      // we'll be doing 16-bit computation with it.
+      uint16_t cdata = input[i];
+      cdata = (cdata ^ crc) & 0xff;
+      crc >>= 8;
+
+      if (oddparity[cdata & 0x0F] ^ oddparity[cdata >> 4])
+          crc ^= 0xC001;
+
+      cdata <<= 6;
+      crc ^= cdata;
+      cdata <<= 1;
+      crc ^= cdata;
+    }
+    return crc;
+}
+
+bool OneWire::check_crc16(const uint8_t* input, uint16_t len, const uint8_t* inverted_crc, uint16_t crc)
+{
+    crc = ~crc16(input, len, crc);
+    return (crc & 0xFF) == inverted_crc[0] && (crc >> 8) == inverted_crc[1];
+}
+
+
 uint8_t OneWire::crc8(const uint8_t *addr, uint8_t len)
 {
 	uint8_t crc = 0;
@@ -380,8 +548,10 @@ void OneWire::reset_search()
 }
 
 uint8_t OneWire::search(uint8_t *newAddr)
-{
-	return wireSearch(newAddr);
+{       int res;
+	res=  wireSearch(newAddr);
+	if (res>0) return res;
+	    else return 0;
 }
 
 // Perform a 1-Wire reset cycle. Returns 1 if a device responds
@@ -428,6 +598,27 @@ void OneWire::write_bit(uint8_t v)
 {
 	wireWriteBit(v);
 }
+
+void OneWire::write_bytes(const uint8_t *buf, uint16_t count, bool power /* = 0 */) {
+  for (uint16_t i = 0 ; i < count ; i++)
+    wireWriteByte(buf[i],power);
+//  if (!power) {
+//    noInterrupts();
+//    DIRECT_MODE_INPUT(baseReg, bitmask);
+//    DIRECT_WRITE_LOW(baseReg, bitmask);
+//    interrupts();
+//  }
+}
+
+//
+// Read a byte
+//
+
+void OneWire::read_bytes(uint8_t *buf, uint16_t count) {
+  for (uint16_t i = 0 ; i < count ; i++)
+    buf[i] = read();
+}
+
 
 // ****************************************
 // End mirrored functions
