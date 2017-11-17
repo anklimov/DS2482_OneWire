@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "OneWire.h"
+#include "DS2482_OneWire.h"
 #include <Wire.h>
 
 // Constructor with no parameters for compatability with OneWire lib
