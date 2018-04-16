@@ -67,7 +67,12 @@ uint8_t OneWire::readByte()
 uint8_t OneWire::checkPresence()
 {
 	begin();
+	#if defined(__SAM3X8E__)
+	end();
+	return true;
+	#else
 	return !end() ? true : false;
+	#endif
 }
 
 // Performs a global reset of device state machine logic. Terminates any ongoing 1-Wire communication.
