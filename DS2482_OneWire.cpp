@@ -66,11 +66,11 @@ uint8_t OneWire::readByte()
 // If no devices are present, this returns false
 uint8_t OneWire::checkPresence()
 {
-	begin();
 	#if defined(__SAM3X8E__)
-	end();
+	if (waitOnBusy() & DS2482_STATUS_BUSY) return false;  //device access error
 	return true;
-	#else
+	#else 
+	begin();
 	return !end() ? true : false;
 	#endif
 }
@@ -176,7 +176,8 @@ void OneWire::writeConfig(uint8_t config)
 // processor through the Status Register, bits PPD and SD.
 uint8_t OneWire::wireReset()
 {
-	waitOnBusy();
+	if (waitOnBusy() & DS2482_STATUS_BUSY) return false;  //device access error
+	
 	// Datasheet warns that reset with SPU set can exceed max ratings
 	clearStrongPullup();
 
