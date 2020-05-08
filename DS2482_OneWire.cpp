@@ -176,8 +176,10 @@ void OneWire::writeConfig(uint8_t config)
 // processor through the Status Register, bits PPD and SD.
 uint8_t OneWire::wireReset()
 {
-	if (waitOnBusy() & DS2482_STATUS_BUSY) return false;  //device access error
-	
+	if (waitOnBusy() & DS2482_STATUS_BUSY) 
+			{
+			return false;  //device access error
+			}
 	// Datasheet warns that reset with SPU set can exceed max ratings
 	clearStrongPullup();
 
@@ -192,6 +194,10 @@ uint8_t OneWire::wireReset()
 	if (status & DS2482_STATUS_SD)
 	{
 		mError = DS2482_ERROR_SHORT;
+	}
+	else if (mError == DS2482_ERROR_SHORT)
+	{
+	        mError = 0;    
 	}
 	
 	if (APU) writeConfig(readConfig() | DS2482_CONFIG_APU);// | DS2482_CONFIG_SPU);
